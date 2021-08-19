@@ -3,8 +3,8 @@ import nimraylib_now
 
 ##  Initialization
 ## --------------------------------------------------------------------------------------
-var screenWidth = 800
-var screenHeight = 450
+var screenWidth = 360
+var screenHeight = 640
 setConfigFlags(ConfigFlags.WINDOW_RESIZABLE)
 initWindow(screenWidth, screenHeight, "Run Retry 2")
 # Variables
@@ -35,8 +35,8 @@ player.sprite = new Sprite
 player.transform = new Transform
 player.sprite.texture = loadTexture("resources/player.png")
 player.sprite.anchor = (0.5, 0.5)
-player.transform.position.y = 100
-player.transform.scale = (0.3, 0.3)
+player.transform.position.y = 200
+player.transform.scale = (1.0, 1.0)
 
 var playerTargetPos = Vector2(x: player.transform.position.x, y: player.transform.position.y)
 var lastMousePos: Vector2
@@ -54,7 +54,7 @@ while not windowShouldClose(): ##  Detect window close button or ESC key
   ##  Update
   ## ----------------------------------------------------------------------------------
   camera.offset = (getScreenWidth() * 0.5, getScreenHeight() * 0.5)
-  # camera.zoom = 1920.0 / getScreenHeight()
+  camera.zoom = min(getScreenWidth() / 1080.0, getScreenHeight() / 1920.0)
 
   if isMouseButtonPressed(0):
     lastMousePos = getScreenToWorld2D(getMousePosition(), camera)
