@@ -14,7 +14,7 @@ else:
   --clang.cpp.exe:emcc # Replace C++
   --clang.cpp.linkerexe:emcc # Replace C++ linker.
 
-#--gc:orc # GC:orc is friendlier with crazy platforms.
+--gc:orc # GC:orc is friendlier with crazy platforms.
 --exceptions:goto # Goto exceptions are friendlier with crazy platforms.
 --define:noSignalHandler # Emscripten doesn't support signal handlers.
 

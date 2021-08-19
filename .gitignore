@@ -138,11 +138,7 @@ tags
 .ionide
 
 ### Web ###
-public/*.html
-public/*.css
-public/*.js
-public/*.wasm
-public/*.data
+public/*
 
 ### Windows ###
 # Windows thumbnail cache files
