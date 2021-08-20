@@ -50,7 +50,7 @@ setTargetFPS(60)
 ##  Set our game to run at 60 frames-per-second
 ## --------------------------------------------------------------------------------------
 ##  Main game loop
-while not windowShouldClose(): ##  Detect window close button or ESC key
+proc gameLoop() {.cdecl.} =
   ##  Update
   ## ----------------------------------------------------------------------------------
   camera.offset = (getScreenWidth() * 0.5, getScreenHeight() * 0.5)
@@ -86,9 +86,16 @@ while not windowShouldClose(): ##  Detect window close button or ESC key
         player.transform.rotation,
         Blue)
     drawFPS(10, 10)
+
+when defined(emscripten):
+  emscriptenSetMainLoop(gameLoop, 0, 1)
+else:
+  while not windowShouldClose():
+    gameLoop()
 ## ----------------------------------------------------------------------------------
 ##  De-Initialization
 ## --------------------------------------------------------------------------------------
 unloadTexture(player.sprite.texture)
 closeWindow()
+
 
