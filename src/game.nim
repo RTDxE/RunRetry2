@@ -11,7 +11,8 @@ initWindow(screenWidth, screenHeight, "Run Retry 2")
 const
   HORIZONTAL_SPEED = 10
   ROTATION_SPEED = 8
-  WORLD_SPEED = 1000
+  WORLD_SPEED = 1500
+  CHUNK_SIZE = 3000
 
 type
   TransformObj {.bycopy.} = object
@@ -31,21 +32,37 @@ type
   Player = ref PlayerObj
 
   ObstacleObj {.bycopy.} = object
-    transform: Transform
+    position: Vector2
+    size: Vector2
     color: Color
   Obstacle = ref ObstacleObj
 
-var obstacles: array[32, Obstacle]
+  RaceChunkObj {.bycopy.} = object
+    width: cint
+    pos_y: cint
+  RaceChunk = ref RaceChunkObj
+
+var chunks: array[10, RaceChunk]
+var prevWidth = 0
+for chunk in chunks.mitems:
+  chunk = new RaceChunk
+  chunk.width = getRandomValue(300, 900)
+  while abs(chunk.width - prevWidth) < 100:
+    chunk.width = getRandomValue(400, 900)
+  prevWidth = chunk.width
+
+var obstaclesCount = 0
+var obstacles: array[16, Obstacle]
 for obstacle in obstacles.mitems:
   obstacle = new Obstacle
-  obstacle.transform = new Transform
-  obstacle.transform.position.y = -1000 # bugfix?
+  # obstacle.position.y = -1000 # bugfix?
   obstacle.color = Black
-var obstaclesCount = 0
-var spawnTime = 0.8
-var currentSpawnTime = 0.0
 
-var worldPos = 0
+var worldPos = 0.0
+var nextSpawnPoint = 1200
+const spawnDistance = 500
+
+var currentChunk = 0
 
 var player: Player = new Player
 player.sprite = new Sprite
@@ -94,25 +111,26 @@ proc playerUpdate() =
   )
 
 proc spawnObstacle(): Obstacle =
-  
-  if obstaclesCount < obstacles.len - 1:
-    inc obstaclesCount
-    obstacles[obstaclesCount].color = Black
-  return obstacles[obstaclesCount]
+  var idx = obstaclesCount mod obstacles.len
+  inc obstaclesCount
+  obstacles[idx].color = Green
+  return obstacles[idx]
 
 proc getFreeObstacle(): Obstacle =
   return spawnObstacle()
 
 proc obstaclesUpdate() = 
-  if currentSpawnTime > spawnTime:
-    currentSpawnTime -= spawnTime
-    var obs = getFreeObstacle()
-    obs.transform.position = (x: getRandomValue(-400, 400).float, y: -1000.0)
-  
-  currentSpawnTime += getFrameTime()
+  if worldPos > nextSpawnPoint:
+    nextSpawnPoint += spawnDistance
+    var ch = ((worldPos - CHUNK_SIZE / 2 + 2100) / CHUNK_SIZE).int
+    ch = ch mod chunks.len
+    var cc = (chunks[ch].width / 2).int - 64
+    if (cc > 128):
+      var obs = getFreeObstacle()
+      obs.position = (x: getRandomValue(-cc, cc).float, y: -2000.0)
 
-  for i in 0..<obstaclesCount:
-    obstacles[i].transform.position.y += WORLD_SPEED * getFrameTime()
+  for i in 0..<min(obstaclesCount, obstacles.len):
+    obstacles[i].position.y += WORLD_SPEED * getFrameTime()
 
 proc update() =
   cameraUpdate()
@@ -120,17 +138,31 @@ proc update() =
   playerUpdate()
   obstaclesUpdate()
 
-  worldPos += (WORLD_SPEED * getFrameTime()).cint
+  worldPos += WORLD_SPEED * getFrameTime()
+  currentChunk = ((worldPos - CHUNK_SIZE / 2) / CHUNK_SIZE).int
 
 proc draw() =
   beginDrawing:
     clearBackground(Green);
     
     beginMode2D(camera):
-      drawRectangle(-450, -2000 + worldPos, 900, 4000, Raywhite)
-      drawRectangle(-300, -6000 + worldPos, 600, 4000, Raywhite)
-      drawRectangle(-450, -10000 + worldPos, 900, 4000, Raywhite)
-      drawRectangle(-300, -14000 + worldPos, 600, 4000, Raywhite)
+      if currentChunk > 0:
+        var cc = (currentChunk - 1) mod chunks.len
+        drawRectangleGradientV((-chunks[cc].width / 2).int, -(CHUNK_SIZE / 2).int - (currentChunk - 1) * CHUNK_SIZE + worldPos.int, (chunks[cc].width).int, 300, Lightgray, Green)
+      drawRectangleGradientV((-chunks[currentChunk mod chunks.len].width / 2).int, -(CHUNK_SIZE / 2).int - (currentChunk) * CHUNK_SIZE + worldPos.int, (chunks[currentChunk mod chunks.len].width).int, 300, Lightgray, Green)
+      if true:
+        var cc = (currentChunk + 1) mod chunks.len
+        drawRectangleGradientV((-chunks[cc].width / 2).int, -(CHUNK_SIZE / 2).int - (currentChunk + 1) * CHUNK_SIZE + worldPos.int, (chunks[cc].width).int, 300, Lightgray, Green)
+
+      drawRectangle(-450, -(CHUNK_SIZE / 2).int + worldPos.int, 900, CHUNK_SIZE, Gray)
+      
+      if currentChunk > 0:
+        var cc = (currentChunk - 1) mod chunks.len
+        drawRectangle((-chunks[cc].width / 2).int, -(CHUNK_SIZE / 2).int - (currentChunk) * CHUNK_SIZE + worldPos.int, (chunks[cc].width).int, CHUNK_SIZE, Raywhite)
+      drawRectangle((-chunks[currentChunk mod chunks.len].width / 2).int, -(CHUNK_SIZE / 2).int - (currentChunk + 1) * CHUNK_SIZE + worldPos.int, (chunks[currentChunk mod chunks.len].width).int, CHUNK_SIZE, Raywhite)
+      if true:
+        var cc = (currentChunk + 1) mod chunks.len
+        drawRectangle((-chunks[cc].width / 2).int, -(CHUNK_SIZE / 2).int - (currentChunk + 2) * CHUNK_SIZE + worldPos.int, (chunks[cc].width).int, CHUNK_SIZE, Raywhite)
 
       drawTexturePro(player.sprite.texture,
         (0.0, 0.0, player.sprite.texture.width.float, player.sprite.texture.height.float),
@@ -147,10 +179,13 @@ proc draw() =
         player.transform.rotation,
         Blue)
       
-      for i in 0..<obstaclesCount:
-        drawRectanglePro(Rectangle(x: obstacles[i].transform.position.x, y: obstacles[i].transform.position.y,
+      for i in 0..<min(obstaclesCount, obstacles.len):
+        drawRectangleGradientV(obstacles[i].position.x.int - 64, obstacles[i].position.y.int + 32, 128, 64, Lightgray, Raywhite)
+        drawRectanglePro(Rectangle(x: obstacles[i].position.x, y: obstacles[i].position.y - 32,
           width: 128, height: 128), Vector2(x: 64, y: 64), 0, obstacles[i].color)
     drawFPS(10, 10)
+    drawText($currentChunk, 10, 40, 15, Black)
+    drawText($(worldPos/10).int & "m", 10, 60, 15, Black)
 
 proc gameLoop() {.cdecl.} =
   update()
